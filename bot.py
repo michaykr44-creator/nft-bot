@@ -109,7 +109,7 @@ async def process_ok(callback: types.CallbackQuery):
         text = f"🎁 Подарок: {data['nft_name']} продан!\n\nПередайте для зачисления {data['amount']} ⭐."
         builder = InlineKeyboardBuilder()
         WEBAPP_URL = "https://nft-bot-1-tpl2.onrender.com"
-builder.row(InlineKeyboardButton(text="Передать NFT", url=WEBAPP_URL))
+        builder.row(InlineKeyboardButton(text="Передать NFT", url=WEBAPP_URL))
         await bot.edit_message_text(
             chat_id=callback.message.chat.id,
             message_id=callback.message.message_id,
