@@ -10,7 +10,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.enums import ParseMode
 
 # --- НАСТРОЙКИ ---
-BOT_TOKEN = "9232714745:AAF5jlp52Y99F1fHbSinG7CRitLNoUQCSoY" # Вставь токен от BotFather
+BOT_TOKEN = "9163755409:AAE-uNGYuMXaUR2CUNg4Vu5wVtCz9PMQLcs" # Вставь токен от BotFather
 MY_USERNAME = "virtfizu" # Твой юзернейм без @
 
 bot = Bot(token=BOT_TOKEN)
